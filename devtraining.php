@@ -160,22 +160,27 @@ function _devtraining_civicrm_post_Address($op, $objectName, $objectId, &$object
  */
 function _devtraining_fetch_county_by_postal_code($postal_code) {
   $result = FALSE;
-  $request = "https://www.zipwise.com/webservices/zipinfo.php?key=voq4s2tk5z6feuno&zip={$postal_code}&format=json";
-  $http = CRM_Utils_HttpClient::singleton()->get($request);
 
-  if (CRM_Utils_Array::value(0, $http) === CRM_Utils_HttpClient::STATUS_OK) {
-    $json = CRM_Utils_Array::value(1, $http);
-    $zipwise = json_decode($json);
+  $zipwise_api_key = CRM_Core_BAO_Setting::getItem('com.ginkgostreet.devtraining', 'zipwise_api_key');
 
-    if (property_exists($zipwise->results, 'error')) {
-      CRM_Core_Error::debug_log_message(
-        'com.ginkgostreet.devtraining - Zipwise lookup failed with: ' . $zipwise->results->error
-      );
+  if ($zipwise_api_key) {
+    $request = "https://www.zipwise.com/webservices/zipinfo.php?key={$zipwise_api_key}&zip={$postal_code}&format=json";
+    $http = CRM_Utils_HttpClient::singleton()->get($request);
+
+    if (CRM_Utils_Array::value(0, $http) === CRM_Utils_HttpClient::STATUS_OK) {
+      $json = CRM_Utils_Array::value(1, $http);
+      $zipwise = json_decode($json);
+
+      if (property_exists($zipwise->results, 'error')) {
+        CRM_Core_Error::debug_log_message(
+          'com.ginkgostreet.devtraining - Zipwise lookup failed with: ' . $zipwise->results->error
+        );
+      } else {
+        $result = $zipwise->results->county;
+      }
     } else {
-      $result = $zipwise->results->county;
+      CRM_Core_Error::debug_log_message('com.ginkgostreet.devtraining - Failed to curl Zipwise');
     }
-  } else {
-    CRM_Core_Error::debug_log_message('com.ginkgostreet.devtraining - Failed to curl Zipwise');
   }
 
   return $result;
