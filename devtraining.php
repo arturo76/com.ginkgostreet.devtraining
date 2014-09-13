@@ -106,3 +106,77 @@ function devtraining_civicrm_caseTypes(&$caseTypes) {
 function devtraining_civicrm_alterSettingsFolders(&$metaDataFolders = NULL) {
   _devtraining_civix_civicrm_alterSettingsFolders($metaDataFolders);
 }
+
+/**
+ * Implementation of hook_civicrm_post. This is a poor man's dispatcher.
+ *
+ * @link http://wiki.civicrm.org/confluence/display/CRMDOC/hook_civicrm_post
+ */
+function devtraining_civicrm_post($op, $objectName, $objectId, &$objectRef) {
+  $f = '_' . __FUNCTION__ . '_' . $objectName;
+  if (function_exists($f)){
+    $f($op, $objectName, $objectId, $objectRef);
+  }
+}
+
+/**
+ * Delegated implementation of hook_civicrm_post for Address objects
+ *
+ * @link http://wiki.civicrm.org/confluence/display/CRMDOC/hook_civicrm_post
+ */
+function _devtraining_civicrm_post_Address($op, $objectName, $objectId, &$objectRef) {
+  // don't look up county unless address is associated with a contact, since our
+  // custom field for counties is on the contact entity
+  if (
+    $objectRef->contact_id
+    && in_array($op, array('edit', 'create'))
+  ) {
+    $county = _devtraining_fetch_county_by_postal_code($objectRef->postal_code);
+
+    if ($county) {
+      // look up the custom id for the county field
+      $api = civicrm_api3('CustomGroup', 'getsingle', array(
+        'name' => 'constituent_information',
+        'api.CustomField.getvalue' => array(
+            'name' => 'county',
+            'return' => 'id',
+        ),
+      ));
+      $county_field_id = $api['api.CustomField.getvalue'];
+
+      civicrm_api3('Contact', 'create', array(
+        'id' => $objectRef->contact_id,
+        "custom_{$county_field_id}" => $county,
+      ));
+    }
+  }
+}
+
+/**
+ * Fetches a county name for a given postal code
+ *
+ * @param string $postal_code
+ * @return mixed Boolean FALSE on error, county name as string on success
+ */
+function _devtraining_fetch_county_by_postal_code($postal_code) {
+  $result = FALSE;
+  $request = "https://www.zipwise.com/webservices/zipinfo.php?key=voq4s2tk5z6feuno&zip={$postal_code}&format=json";
+  $http = CRM_Utils_HttpClient::singleton()->get($request);
+
+  if (CRM_Utils_Array::value(0, $http) === CRM_Utils_HttpClient::STATUS_OK) {
+    $json = CRM_Utils_Array::value(1, $http);
+    $zipwise = json_decode($json);
+
+    if (property_exists($zipwise->results, 'error')) {
+      CRM_Core_Error::debug_log_message(
+        'com.ginkgostreet.devtraining - Zipwise lookup failed with: ' . $zipwise->results->error
+      );
+    } else {
+      $result = $zipwise->results->county;
+    }
+  } else {
+    CRM_Core_Error::debug_log_message('com.ginkgostreet.devtraining - Failed to curl Zipwise');
+  }
+
+  return $result;
+}
