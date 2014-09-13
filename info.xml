@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<extension key="com.ginkgostreet.devtraining" type="module">
+  <file>devtraining</file>
+  <name>Training Extension</name>
+  <description>An example CiviCRM extension for training developers</description>
+  <license>AGPL-3.0</license>
+  <maintainer>
+    <author>Frank J. Gómez</author>
+    <email>frank@ginkgostreet.com</email>
+  </maintainer>
+  <releaseDate>2014-09-12</releaseDate>
+  <version>1.0</version>
+  <develStage>alpha</develStage>
+  <compatibility>
+    <ver>4.5</ver>
+  </compatibility>
+  <comments>This is a new, undeveloped module</comments>
+  <civix>
+    <namespace>CRM/Devtraining</namespace>
+  </civix>
+</extension>
